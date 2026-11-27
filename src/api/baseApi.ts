@@ -8,11 +8,16 @@ export const baseApi = createApi({
         baseUrl: '/api',
         credentials: 'include',
     }),
-    tagTypes: ['Post'],
+    tagTypes: ['Post', 'Me'],
     endpoints: (builder) => ({
         getPosts: builder.query<Post[], void>({
             query: () => '/posts',
             providesTags: ['Post'],
+        }),
+
+        getMe: builder.query<AuthUser, void>({
+            query: () => '/auth/me',
+            providesTags: ['Me'],
         }),
 
         register: builder.mutation<AuthUser, AuthFormData>({
@@ -29,8 +34,9 @@ export const baseApi = createApi({
                 method: 'POST',
                 body,
             }),
+            invalidatesTags: ['Me'],
         }),
     }),
 });
 
-export const { useGetPostsQuery, useRegisterMutation, useLoginMutation } = baseApi;
+export const { useGetPostsQuery, useGetMeQuery, useRegisterMutation, useLoginMutation } = baseApi;

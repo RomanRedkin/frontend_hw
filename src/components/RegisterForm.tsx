@@ -1,10 +1,10 @@
 import { useForm } from 'react-hook-form';
+import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import { useRegisterMutation } from '../api/baseApi';
-import { getErrorMessage } from '../api/getErrorMessage';
 import type { RegisterFormData } from '../data/Auth.types';
 
 interface RegisterFormProps {
-    onSuccess?: () => void;
+    onSuccess: () => void;
 }
 
 export default function RegisterForm({ onSuccess }: RegisterFormProps) {
@@ -13,21 +13,28 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
         register,
         handleSubmit,
         reset,
-        getValues,
+        setError,
         formState: { errors },
     } = useForm<RegisterFormData>({
-        defaultValues: { email: '', password: '', confirmPassword: '' },
+        mode: 'onChange',
+        defaultValues: { email: '', password: '' },
     });
 
     const onSubmit = async (formData: RegisterFormData) => {
-        const result = await registerUser({ email: formData.email, password: formData.password });
-
-        if (result.data) {
-            alert(`Регистрация успешна! Добро пожаловать, ${result.data.email} (id: ${result.data.id})`);
+        try {
+            const user = await registerUser(formData).unwrap();
+            alert(`Регистрация успешна! Теперь войдите как ${user.email}`);
             reset();
-            onSuccess?.();
-        } else {
-            alert(`Ошибка регистрации: ${getErrorMessage(result.error)}`);
+            onSuccess();
+        } catch (error) {
+            const status = (error as FetchBaseQueryError).status;
+            if (status === 409) {
+                setError('root', { message: 'Этот email уже занят' });
+            } else if (status === 'FETCH_ERROR') {
+                setError('root', { message: 'Нет связи с сервером. Попробуйте ещё раз' });
+            } else {
+                setError('root', { message: 'Что-то пошло не так. Попробуйте позже' });
+            }
         }
     };
 
@@ -38,7 +45,6 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                 <input
                     type="email"
                     placeholder="you@example.com"
-                    autoComplete="email"
                     className={errors.email ? 'invalid' : ''}
                     {...register('email', {
                         required: 'Введите email',
@@ -53,7 +59,6 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                 <input
                     type="password"
                     placeholder="Минимум 6 символов"
-                    autoComplete="new-password"
                     className={errors.password ? 'invalid' : ''}
                     {...register('password', {
                         required: 'Введите пароль',
@@ -63,22 +68,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                 {errors.password && <small className="field-error">{errors.password.message}</small>}
             </label>
 
-            <label className="field">
-                <span>Повторите пароль</span>
-                <input
-                    type="password"
-                    placeholder="Ещё раз пароль"
-                    autoComplete="new-password"
-                    className={errors.confirmPassword ? 'invalid' : ''}
-                    {...register('confirmPassword', {
-                        required: 'Повторите пароль',
-                        validate: (value) => value === getValues('password') || 'Пароли не совпадают',
-                    })}
-                />
-                {errors.confirmPassword && (
-                    <small className="field-error">{errors.confirmPassword.message}</small>
-                )}
-            </label>
+            {errors.root && <p className="form-error">{errors.root.message}</p>}
 
             <button type="submit" className="btn btn-primary" disabled={isLoading}>
                 {isLoading ? 'Регистрируем...' : 'Зарегистрироваться'}
