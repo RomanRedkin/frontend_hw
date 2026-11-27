@@ -3,10 +3,11 @@ import Header from './components/Header.tsx';
 import PostList from './components/PostList.tsx';
 import AuthPanel from './components/AuthPanel.tsx';
 import StatusMessage from './components/StatusMessage.tsx';
-import { useGetPostsQuery } from './api/baseApi.ts';
+import { useGetMeQuery, useGetPostsQuery } from './api/baseApi.ts';
 
 export default function App() {
     const { data: posts, isLoading, isError, refetch } = useGetPostsQuery();
+    const { data: me } = useGetMeQuery();
 
     let content;
     if (isLoading) {
@@ -35,7 +36,14 @@ export default function App() {
                     {content}
                 </section>
                 <aside className="sidebar">
-                    <AuthPanel />
+                    {me ? (
+                        <div className="auth-panel">
+                            <h2 className="auth-title">Привет!</h2>
+                            <p className="auth-hint">Вы вошли как <b>{me.email}</b></p>
+                        </div>
+                    ) : (
+                        <AuthPanel />
+                    )}
                 </aside>
             </main>
         </div>

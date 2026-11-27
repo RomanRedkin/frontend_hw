@@ -1,32 +1,34 @@
 import { useForm } from 'react-hook-form';
+import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import { useLoginMutation } from '../api/baseApi';
-import { getErrorMessage } from '../api/getErrorMessage';
-import type { AuthUser, LoginFormData } from '../data/Auth.types';
+import type { LoginFormData } from '../data/Auth.types';
 
-interface LoginFormProps {
-    onSuccess?: (user: AuthUser) => void;
-}
-
-export default function LoginForm({ onSuccess }: LoginFormProps) {
+export default function LoginForm() {
     const [login, { isLoading }] = useLoginMutation();
     const {
         register,
         handleSubmit,
         reset,
+        setError,
         formState: { errors },
     } = useForm<LoginFormData>({
+        mode: 'onChange',
         defaultValues: { email: '', password: '' },
     });
 
     const onSubmit = async (formData: LoginFormData) => {
-        const result = await login(formData);
-
-        if (result.data) {
-            alert(`Вы вошли как ${result.data.email}`);
+        try {
+            await login(formData).unwrap();
             reset();
-            onSuccess?.(result.data);
-        } else {
-            alert(`Ошибка входа: ${getErrorMessage(result.error)}`);
+        } catch (error) {
+            const status = (error as FetchBaseQueryError).status;
+            if (status === 401) {
+                setError('root', { message: 'Неверный email или пароль' });
+            } else if (status === 'FETCH_ERROR') {
+                setError('root', { message: 'Нет связи с сервером. Попробуйте ещё раз' });
+            } else {
+                setError('root', { message: 'Что-то пошло не так. Попробуйте позже' });
+            }
         }
     };
 
@@ -37,7 +39,6 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
                 <input
                     type="email"
                     placeholder="you@example.com"
-                    autoComplete="email"
                     className={errors.email ? 'invalid' : ''}
                     {...register('email', {
                         required: 'Введите email',
@@ -52,12 +53,16 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
                 <input
                     type="password"
                     placeholder="Ваш пароль"
-                    autoComplete="current-password"
                     className={errors.password ? 'invalid' : ''}
-                    {...register('password', { required: 'Введите пароль' })}
+                    {...register('password', {
+                        required: 'Введите пароль',
+                        minLength: { value: 6, message: 'Минимум 6 символов' },
+                    })}
                 />
                 {errors.password && <small className="field-error">{errors.password.message}</small>}
             </label>
+
+            {errors.root && <p className="form-error">{errors.root.message}</p>}
 
             <button type="submit" className="btn btn-primary" disabled={isLoading}>
                 {isLoading ? 'Входим...' : 'Войти'}

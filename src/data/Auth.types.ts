@@ -5,15 +5,9 @@ export interface AuthFormData {
 
 export type LoginFormData = AuthFormData;
 
-export interface RegisterFormData extends AuthFormData {
-    confirmPassword: string;
-}
+export type RegisterFormData = AuthFormData;
 
 export interface AuthUser {
     id: number;
     email: string;
-}
-
-export interface ApiError {
-    message: string;
 }
